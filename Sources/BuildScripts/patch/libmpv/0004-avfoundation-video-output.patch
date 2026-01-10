@@ -1,4 +1,4 @@
-From 10a59044107e0b7f11d07ee14fef718486a5d9b8 Mon Sep 17 00:00:00 2001
+From b58aef8eca8a059404be0bf28ce756c355126a45 Mon Sep 17 00:00:00 2001
 From: Alex Kim <alexkim@Alexs-MacBook-Pro.local>
 Date: Sat, 23 Aug 2025 20:11:28 +1000
 Subject: [PATCH] AVfoundation video output
@@ -7,8 +7,8 @@ Subject: [PATCH] AVfoundation video output
  meson.build                 |   8 +
  meson.options               |   1 +
  video/out/vo.c              |   4 +
- video/out/vo_avfoundation.m | 901 ++++++++++++++++++++++++++++++++++++
- 4 files changed, 914 insertions(+)
+ video/out/vo_avfoundation.m | 954 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 967 insertions(+)
  create mode 100644 video/out/vo_avfoundation.m
 
 diff --git a/meson.build b/meson.build
@@ -66,10 +66,10 @@ index 7b5df4b886..3b8bbd0b39 100644
  #endif
 diff --git a/video/out/vo_avfoundation.m b/video/out/vo_avfoundation.m
 new file mode 100644
-index 0000000000..8dfa0a03f2
+index 0000000000..fe99e4ab1d
 --- /dev/null
 +++ b/video/out/vo_avfoundation.m
-@@ -0,0 +1,901 @@
+@@ -0,0 +1,954 @@
 +/*
 + * This file is part of mpv.
 + *
@@ -140,6 +140,9 @@ index 0000000000..8dfa0a03f2
 +    
 +    // Frame counter for periodic maintenance
 +    int frame_count;
++    
++    // Track if OSD callback was invoked this frame
++    bool osd_callback_invoked;
 +};
 +
 +// Helper to sync OSD layer frame with display layer bounds
@@ -217,12 +220,34 @@ index 0000000000..8dfa0a03f2
 +    return true;
 +}
 +
-+// Create output pool for HDR compositing (16-bit half-float RGBA)
-+static bool create_output_pool(struct vo *vo, int w, int h)
++// Create output pool matching the source format to preserve quality
++// Strategy: Use BGRA for 8-bit SDR (matches subtitle format, avoids half-float precision loss)
++//           Use RGBA half-float for 10-bit HDR (necessary for HDR precision)
++static bool create_output_pool(struct vo *vo, int w, int h, OSType format)
 +{
 +    struct priv *p = vo->priv;
++    
++    OSType outputFormat;
++    
++    // For 10-bit HDR content (P010), use RGBA half-float to preserve HDR precision
++    if (format == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange ||
++        format == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange) {
++        outputFormat = kCVPixelFormatType_64RGBAHalf;
++    }
++    // For 8-bit SDR content, use BGRA (matches subtitle format, avoids half-float precision issues)
++    // This minimizes format conversions and preserves quality better than RGBA half-float
++    else if (format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
++             format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange ||
++             format == kCVPixelFormatType_420YpCbCr8Planar) {
++        outputFormat = kCVPixelFormatType_32BGRA;
++    }
++    // Default to RGBA half-float for unknown formats (HDR-safe fallback)
++    else {
++        outputFormat = kCVPixelFormatType_64RGBAHalf;
++    }
++    
 +    return create_pixel_buffer_pool(vo, &p->outputPool, &p->output_pool_w, 
-+        &p->output_pool_h, NULL, w, h, kCVPixelFormatType_64RGBAHalf, "HDR output");
++        &p->output_pool_h, NULL, w, h, outputFormat, "composite output");
 +}
 +
 +// Copy HDR metadata from source to destination pixel buffer
@@ -444,6 +469,9 @@ index 0000000000..8dfa0a03f2
 +    struct vo *vo = ctx;
 +    struct priv *p = vo->priv;
 +    
++    // Mark that callback was invoked this frame
++    p->osd_callback_invoked = true;
++    
 +    if (!imgs || imgs->num_parts == 0) {
 +        // Clear subtitles when there are none
 +        if (p->has_subtitle) {
@@ -525,7 +553,29 @@ index 0000000000..8dfa0a03f2
 +        [SUBBITMAP_LIBASS] = true,
 +    };
 +    
++    // Reset flag before calling osd_draw
++    p->osd_callback_invoked = false;
++    
 +    osd_draw(vo->osd, osd_res, pts, 0, formats, draw_osd_cb, vo);
++    
++    // If callback wasn't invoked, there are no subtitles for this PTS
++    // Clear any cached subtitle state
++    if (!p->osd_callback_invoked && p->has_subtitle) {
++        p->has_subtitle = false;
++        if (p->composite_osd) {
++            if (p->cachedSubtitleImage) {
++                CGImageRelease(p->cachedSubtitleImage);
++                p->cachedSubtitleImage = NULL;
++            }
++        } else if (p->osdLayer) {
++            dispatch_async(dispatch_get_main_queue(), ^{
++                [CATransaction begin];
++                [CATransaction setDisableActions:YES];
++                p->osdLayer.contents = nil;
++                [CATransaction commit];
++            });
++        }
++    }
 +}
 +
 +// Composite subtitle onto video frame using Core Image (GPU) - HDR compatible
@@ -539,8 +589,11 @@ index 0000000000..8dfa0a03f2
 +    size_t w = CVPixelBufferGetWidth(videoBuffer);
 +    size_t h = CVPixelBufferGetHeight(videoBuffer);
 +    
-+    // Ensure output pool matches dimensions
-+    if (!create_output_pool(vo, (int)w, (int)h))
++    // Detect original pixel format to preserve quality
++    OSType sourceFormat = CVPixelBufferGetPixelFormatType(videoBuffer);
++    
++    // Ensure output pool matches dimensions and format
++    if (!create_output_pool(vo, (int)w, (int)h, sourceFormat))
 +        return NULL;
 +    
 +    // Get output buffer from pool
@@ -973,4 +1026,3 @@ index 0000000000..8dfa0a03f2
 +};
 -- 
 2.50.1 (Apple Git-155)
-
