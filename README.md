@@ -1,10 +1,10 @@
 # MPVKit (AVFoundation Fork)
 
-[![mpv](https://img.shields.io/badge/mpv-v0.40.0-blue.svg)](https://github.com/mpv-player/mpv)
-[![ffmpeg](https://img.shields.io/badge/ffmpeg-n8.0-blue.svg)](https://github.com/FFmpeg/FFmpeg)
+[![mpv](https://img.shields.io/badge/mpv-v0.41.0-blue.svg)](https://github.com/mpv-player/mpv)
+[![ffmpeg](https://img.shields.io/badge/ffmpeg-n8.0.1-blue.svg)](https://github.com/FFmpeg/FFmpeg)
 [![license](https://img.shields.io/badge/license-GPL--3.0-red.svg)](LICENSE)
 
-This is a fork of [MPVKit](https://github.com/mpvkit/MPVKit) with **AVFoundation video output (`vo_avfoundation`)** support for iOS.
+This is a fork of [Alexk2309/MPVKit](https://github.com/Alexk2309/MPVKit) (itself a fork of [mpvkit/MPVKit](https://github.com/mpvkit/MPVKit)) with **AVFoundation video output (`vo_avfoundation`)** support for iOS, updated to mpv 0.41.0 and distributed via Swift Package Manager only.
 
 ## Acknowledgments
 
@@ -48,25 +48,11 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Alexk2309/MPVKit.git", from: "0.40.0-av")
+    .package(url: "https://github.com/ayooooo123/MPVKit.git", from: "0.41.0-av")
 ]
 ```
 
-Or use Xcode: File → Add Package Dependencies → Enter `https://github.com/Alexk2309/MPVKit.git` → Select version `0.40.0-av` or later.
-
-### CocoaPods
-
-Add to your `Podfile`:
-
-```ruby
-pod 'MPVKit-GPL', :git => 'https://github.com/Alexk2309/MPVKit.git', :tag => '0.40.0-av'
-```
-
-Then run:
-
-```bash
-pod install
-```
+Or use Xcode: File -> Add Package Dependencies -> Enter `https://github.com/ayooooo123/MPVKit.git` -> Select version `0.41.0-av` or later.
 
 ### Usage
 

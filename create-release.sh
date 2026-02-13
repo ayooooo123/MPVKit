@@ -5,7 +5,7 @@
 
 set -e
 
-RELEASE_VERSION="${1:-0.40.0-av}"
+RELEASE_VERSION="${1:-0.41.0-av}"
 RELEASE_DIR="./dist/release"
 IS_PRERELEASE=false
 
@@ -78,7 +78,7 @@ RELEASE_NOTES="release-notes-${RELEASE_VERSION}.md"
     echo ""
     echo "\`\`\`swift"
     echo "dependencies: ["
-    echo "    .package(url: \"https://github.com/Alexk2309/MPVKit.git\", from: \"$RELEASE_VERSION\")"
+    echo "    .package(url: \"https://github.com/ayooooo123/MPVKit.git\", from: \"$RELEASE_VERSION\")"
     echo "]"
     echo "\`\`\`"
     echo ""
@@ -117,5 +117,5 @@ echo "=========================================="
 echo "✅ Release created successfully!"
 echo "=========================================="
 echo ""
-echo "Release URL: https://github.com/Alexk2309/MPVKit/releases/tag/$RELEASE_VERSION"
+echo "Release URL: https://github.com/ayooooo123/MPVKit/releases/tag/$RELEASE_VERSION"
 echo ""

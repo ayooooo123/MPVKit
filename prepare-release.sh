@@ -6,7 +6,7 @@
 set -e
 
 RELEASE_DIR="./dist/release"
-RELEASE_VERSION="${1:-0.40.0-av}"
+RELEASE_VERSION="${1:-0.41.0-av}"
 
 echo "=========================================="
 echo "Preparing Release: $RELEASE_VERSION"
